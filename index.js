@@ -1,9 +1,25 @@
 import express from "express";
 import dotenv from "dotenv";
+import joi from "joi";
+import cors from "cors";
 import { MongoClient } from "mongodb";
 
+const participantSchema = joi.object({
+    name: joi.string().required().min(2),
+});
+
+const messageSchema = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.string().valid("message", "private_message").required(),
+});
+
 const app = express();
+
+// Configs
+
 dotenv.config();
+app.use(cors());
 app.use(express.json());
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
@@ -12,10 +28,10 @@ const mongoClient = new MongoClient(process.env.MONGO_URI);
 
 try {
     await mongoClient.connect()
-} catch(err) {
+} catch (err) {
     console.log(err)
 }
-let db = mongoClient.db("batepapouol");
+const db = mongoClient.db("batepapouol");
 
 //  Routes
 
