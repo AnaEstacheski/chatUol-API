@@ -48,7 +48,7 @@ app.get("/participants", async (req, res) => {
 app.post("/participants", async (req, res) => {
     const participant = req.body;
     const validation = participantSchema.validate(participant, {
-        abortEarly: false,
+        abortEarly: false
     });
 
     if (validation.error) {
@@ -74,9 +74,7 @@ app.post("/participants", async (req, res) => {
             .collection("participants")
             .findOne({ name: participant.name })
         if (invalidUserName) {
-            res
-                .status(409)
-                .send("invalid username");
+            res.status(409).send("invalid username");
             return;
         }
         await db.collection("participants")
@@ -93,11 +91,61 @@ app.post("/participants", async (req, res) => {
 //
 
 app.get("/messages", async (req, res) => {
-    
+    const { limit } = req.query;
+    const { user } = req.headers;
+
+    try {
+        const messages = await db.collection("messages")
+            .find()
+            .toArray();
+        const filterMessage = messages.filter(
+            (el) =>
+                el.from === user ||
+                el.to === user ||
+                el.type === "message" ||
+                el.type === "status",
+        );
+        if (limit) {
+            res.send(filterMessage.slice(-limit))
+            return;
+        } res.send(filterMessage)
+    } catch (err) {
+        console.log(err)
+        res.sendStatus(400);
+    }
 });
 
 app.post("/messages", async (req, res) => {
+    const message = req.body;
+    const user = req.headers.user;
+    const validation = messageSchema.validate(message, { abortEarly: false });
+    if (validation.error) {
+        const error = validation.error.details.map((detail) => detail.message);
+        res.status(422).send(error);
+        return;
+    }
 
+    const newMessage = {
+        to: message.to,
+        from: user,
+        text: message.text,
+        type: message.type,
+        time: dayjs().format("HH:mm:ss"),
+    }
+
+    try {
+        const userExists = await db
+            .collection("participants")
+            .findOne({ name: user });
+        if (!userExists) {
+            res.sendStatus(422)
+            return;
+        }
+        await db.collection("messages").insertOne(newMessage);
+        res.sendStatus(201);
+    } catch (error) {
+        res.sendStatus(400);
+    }
 });
 
 //
