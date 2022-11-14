@@ -151,7 +151,29 @@ app.post("/messages", async (req, res) => {
 //
 
 app.post("/status", async (req, res) => {
-
+    const user = req.headers.user;
+    try {
+        const userExists = await db
+            .collection("participants")
+            .findOne({ name: user });
+        if (!userExists) {
+            res.sendStatus(404);
+            return;
+        }
+        await db.collection("participants").updateOne(
+            { _id: userExists._id },
+            {
+                $set: {
+                    name: userExists.name,
+                    lastStatus: date
+                },
+            }
+        );
+        res.sendStatus(200);
+    } catch (err) {
+        console.log(err)
+        res.sendStatus(400);
+    }
 })
 
 //
