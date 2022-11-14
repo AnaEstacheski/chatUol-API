@@ -126,8 +126,8 @@ app.post("/messages", async (req, res) => {
     }
 
     const newMessage = {
-        to: message.to,
         from: user,
+        to: message.to,
         text: message.text,
         type: message.type,
         time: dayjs().format("HH:mm:ss"),
@@ -165,7 +165,7 @@ app.post("/status", async (req, res) => {
             {
                 $set: {
                     name: userExists.name,
-                    lastStatus: date
+                    lastStatus: Date.now(),
                 },
             }
         );
@@ -175,6 +175,34 @@ app.post("/status", async (req, res) => {
         res.sendStatus(400);
     }
 })
+
+// Remove inactive users
+
+setInterval(removeInactiveUser, 15000);
+
+async function removeInactiveUser() {
+	try {
+		const participants = await db.collection("participants")
+        .find()
+        .toArray();
+		participants
+			.filter((el) => Date.now() - el.lastStatus > 10000)
+			.forEach((el) => {
+				const newStatus = {
+					from: el.name,
+					to: "Todos",
+					text: "sai da sala...",
+					type: "status",
+					time: dayjs().format("HH:mm:ss"),
+				};
+
+				db.collection("participants").deleteOne({ _id: el._id });
+				db.collection("messages").insertOne(newStatus);
+			});
+	} catch (err) {
+		console.log(err);
+	}
+}
 
 //
 
